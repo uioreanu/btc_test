@@ -1,0 +1,96 @@
+---
+title: "BTC model"
+author: "Calin Uioreanu"
+date: "February 26, 2018"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## BTC Modeling
+
+This is an attempt to model the BTC price using previous days data.
+
+```{r requirements, echo=FALSE,include=FALSE, cache=FALSE}
+library(Quandl)
+library(ggplot2)
+library(dplyr)
+library(e1071)
+library(caret)
+library(randomForest)
+#library(xtable)
+```
+
+## Retrieving BTC data
+
+We use the Quandl API to retrieve historical BTC prices, filter >= 2014
+
+```{r data, echo=TRUE}
+btc <- Quandl("BCHARTS/BTCDEEUR")
+btc <- subset(btc, Date>='2014-01-01')
+dim(btc)
+```
+
+
+## BTC trends
+
+the daily weighted BTC price
+
+```{r chart, echo=FALSE}
+ggplot(btc, aes(x = Date, y = `Weighted Price`)) + 
+  geom_point() + 
+  theme_minimal() + 
+  geom_smooth(method = "loess")
+```
+
+## BTC linear regression
+
+a simple linear regression model to see how the prices correlate
+
+```{r lm.simple, echo=FALSE}
+lm.model <- lm (`Weighted Price` ~ Open + High + Low + Close, data = btc)
+summary(lm.model)
+```
+
+So intra-day data is highly correlated. Preparing prediction using historical data:
+
+## Data preparation
+
+historical data via lag
+
+```{r lag_data, echo=TRUE}
+ds <- btc %>%
+    mutate(Price = `Weighted Price`) %>%
+    dplyr::select(Date, Price) %>%
+    arrange(Date) %>%
+    mutate(Grow_0 = Price > lag(Price, 1), 
+           Grow_1 = lag(Price, 1)>lag(Price, 2), 
+           Grow_2 = lag(Price, 2)>lag(Price, 3), 
+           Grow_3 = lag(Price, 3)>lag(Price, 4), 
+           Grow_4 = lag(Price, 4)>lag(Price, 5), 
+           Grow_5 = lag(Price, 5)>lag(Price, 6), 
+           Grow_6 = lag(Price, 6)>lag(Price, 7), 
+           Grow_5 = lag(Price, 7)>lag(Price, 8), 
+           Grow_1w = lag(Price, 0)>lag(Price, 7), 
+           Grow_2w = lag(Price, 0)>lag(Price, 14)) %>%
+    dplyr::select(-Date, - Price)
+  ds <- ds[complete.cases(ds),]
+  head(ds)
+```
+## BTC Model
+
+a logistic regression model to see how the today's trend correlates to historical.
+
+```{r btc_model, echo=FALSE}
+x = ds[, -1]
+  y = as.factor(ds$Grow_0)
+  library(e1071)
+  model = train(
+    x,y,model='nb',
+    trControl=trainControl(method='cv',number=10), metric="Accuracy")
+  model
+```
+  
+Tools: caret package, randomForest and 10 fold Cross-validation
