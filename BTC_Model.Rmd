@@ -3,6 +3,9 @@ title: "BTC model"
 author: "Calin Uioreanu"
 date: "February 26, 2018"
 output: html_document
+#output:
+#  md_document:
+#    variant: markdown_github
 ---
 
 ```{r setup, include=FALSE}
@@ -73,17 +76,17 @@ ds <- btc %>%
            Grow_5 = lag(Price, 5)>lag(Price, 6), 
            Grow_6 = lag(Price, 6)>lag(Price, 7), 
            Grow_5 = lag(Price, 7)>lag(Price, 8), 
-           Grow_1w = lag(Price, 0)>lag(Price, 7), 
-           Grow_2w = lag(Price, 0)>lag(Price, 14)) %>%
+           Grow_1w = lag(Price, 1)>lag(Price, 8), 
+           Grow_2w = lag(Price, 1)>lag(Price, 15)) %>%
     dplyr::select(-Date, - Price)
   ds <- ds[complete.cases(ds),]
   head(ds)
 ```
-## BTC Model
+## BTC Model using Naive Bayes
 
 a logistic regression model to see how the today's trend correlates to historical.
 
-```{r btc_model, echo=FALSE}
+```{r btc_model, echo=TRUE}
 x = ds[, -1]
   y = as.factor(ds$Grow_0)
   library(e1071)
