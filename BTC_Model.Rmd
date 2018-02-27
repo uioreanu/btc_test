@@ -23,6 +23,7 @@ library(dplyr)
 library(e1071)
 library(caret)
 library(randomForest)
+library(e1071)
 #library(xtable)
 ```
 
@@ -48,18 +49,17 @@ ggplot(btc, aes(x = Date, y = `Weighted Price`)) +
   geom_smooth(method = "loess")
 ```
 
-## BTC linear regression
+## Dataset correlation coefficients
 
-a simple linear regression model to see how the prices correlate
+a simple correlationchart, showing the high degree of correlation between intra-day data
 
 ```{r lm.simple, echo=FALSE}
-lm.model <- lm (`Weighted Price` ~ Open + High + Low + Close, data = btc)
-summary(lm.model)
+corrplot::corrplot(
+  cor(btc[, -1]),type="upper", method="pie", order = "hclust", addrect = 3)
 ```
 
-So intra-day data is highly correlated. Preparing prediction using historical data:
-
-## Data preparation
+# Data Preparation
+### Preparing prediction using historical data
 
 historical data via lag
 
@@ -79,21 +79,50 @@ ds <- btc %>%
            Grow_1w = lag(Price, 1)>lag(Price, 8), 
            Grow_2w = lag(Price, 1)>lag(Price, 15)) %>%
     dplyr::select(-Date, - Price)
+rownames(ds) <- btc$Date
+
   ds <- ds[complete.cases(ds),]
   head(ds)
+  x = ds[, -1]
+  y = as.factor(ds$Grow_0)
 ```
-## BTC Model using Naive Bayes
 
-a logistic regression model to see how the today's trend correlates to historical.
+# Prediction comparison
+### BTC Modeling using several ML algos
+
+a logistic regression model to see how today's trend can be predicted based on historical data
+
+Tools: 4 popular ML method x 30 results ( 3 repeats of 10-fold cross validation)
+
+Methods: RF, lvw, svm, gbm
 
 ```{r btc_model, echo=TRUE}
-x = ds[, -1]
-  y = as.factor(ds$Grow_0)
-  library(e1071)
-  model = train(
-    x,y,model='nb',
-    trControl=trainControl(method='cv',number=10), metric="Accuracy")
-  model
-```
+
+control = trainControl(method='cv',number=10, repeats=3)
+
+set.seed(123)
+model.rf  = train(x,y,model='rf' ,trControl=control, metric="Accuracy")
+model.lvq = train(x,y,model='lvq',trControl=control, metric="Accuracy")
+model.gbm = train(x,y,model='gbm',trControl=control, metric="Accuracy", verbose=FALSE)
+model.svm = train(x,y,model='svm',trControl=control, metric="Accuracy")
+
+# collect resamples
+results <- resamples(list(RF = model.rf, LVQ=model.lvq, GBM=model.gbm, SVM=model.svm))
+# summarize the distributions
+summary(results)
   
-Tools: caret package, randomForest and 10 fold Cross-validation
+```
+
+All methods perform generally well, but Gradient Boosting Machine has the lowest median accuracy, same a low Kappa. SVM has also the widest range:
+
+```{r btc_model_charts, echo=TRUE}
+# boxplots of results
+bwplot(results)
+# dot plots of results
+dotplot(results)
+```
+
+# Best method: Learning Vector Quantization lvq
+### mean Accuracy 59,2%
+### mean Kappa: 16,5%
+Kappa = the amount of agreement correct by the agreement expected by chance
