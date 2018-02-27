@@ -113,7 +113,7 @@ summary(results)
   
 ```
 
-All methods perform generally well, but Gradient Boosting Machine has the lowest median accuracy, same a low Kappa. SVM has also the widest range:
+All methods perform relatively well in terms of Accuracy, but Gradient Boosting Machine has the lowest median accuracy, same the lowest low Kappa. SVM has also the widest range:
 
 ```{r btc_model_charts, echo=TRUE}
 # boxplots of results
@@ -125,4 +125,4 @@ dotplot(results)
 # Best method: Learning Vector Quantization lvq
 ### mean Accuracy 59,2%
 ### mean Kappa: 16,5%
-Kappa = the amount of agreement correct by the agreement expected by chance
+Kappa = the amount of agreement correct by the agreement expected by chance. In other words, how much better, the classifier is than what would be expected by random chance. 
