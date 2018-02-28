@@ -24,6 +24,7 @@ library(e1071)
 library(caret)
 library(randomForest)
 library(e1071)
+library(gbm)
 #library(xtable)
 ```
 
@@ -32,9 +33,14 @@ library(e1071)
 We use the Quandl API to retrieve historical BTC prices, filter >= 2014
 
 ```{r data, echo=TRUE}
+# Bitcoin to EUR
 btc <- Quandl("BCHARTS/BTCDEEUR")
 btc <- subset(btc, Date>='2014-01-01')
 dim(btc)
+
+# Ethereum to EUR
+# btc <- Quandl("BITFINEX/ETHUSD")
+# btc$`Weighted Price`<-btc$Mid
 ```
 
 
@@ -101,13 +107,16 @@ Methods: RF, lvw, svm, gbm
 control = trainControl(method='cv',number=10, repeats=3)
 
 set.seed(123)
-model.rf  = train(x,y,model='rf' ,trControl=control, metric="Accuracy")
-model.lvq = train(x,y,model='lvq',trControl=control, metric="Accuracy")
-model.gbm = train(x,y,model='gbm',trControl=control, metric="Accuracy", verbose=FALSE)
-model.svm = train(x,y,model='svm',trControl=control, metric="Accuracy")
+model.rf  = caret::train(x,y, method='rf' ,trControl=control, metric="Accuracy")
+model.lvq = caret::train(x,y, method='lvq',trControl=control, metric="Accuracy")
+model.svm = caret::train(x,y, method='svmLinearWeights',trControl=control, metric="Accuracy")
+
+# model.gbm = caret::train(x,y, method='gbm',trControl=control, metric="Accuracy", verbose=FALSE)
+# model.wsrf = caret::train(x,y, method='glmnet',trControl=control, metric="Accuracy", verbose=FALSE)
+
 
 # collect resamples
-results <- resamples(list(RF = model.rf, LVQ=model.lvq, GBM=model.gbm, SVM=model.svm))
+results <- resamples(list(RF = model.rf, LVQ=model.lvq, SVM=model.svm))
 # summarize the distributions
 summary(results)
   
@@ -122,7 +131,20 @@ bwplot(results)
 dotplot(results)
 ```
 
-# Best method: Learning Vector Quantization lvq
-### mean Accuracy 59,2%
-### mean Kappa: 16,5%
+# Optimal choice so far: Random Forest
+### mean Accuracy 58,2%
+### mean Kappa: 14,1%
 Kappa = the amount of agreement correct by the agreement expected by chance. In other words, how much better, the classifier is than what would be expected by random chance. 
+
+```{r importance, echo=TRUE}
+# boxplots of results
+
+importance.variables <- varImp(model.rf, scale=FALSE)
+plot(importance.variables)
+```
+
+# Model details
+
+```{r model_details, echo=TRUE}
+model.rf 
+```
